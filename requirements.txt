@@ -1,0 +1,4 @@
+# Pinned for Python 3.9. Newer MediaPipe pulls in JAX, which needs 3.10+.
+mediapipe==0.10.9
+opencv-contrib-python==4.11.0.86
+numpy>=1.24,<2
