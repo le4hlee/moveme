@@ -12,6 +12,7 @@ Run:
   python detect_fingers.py
 
 Press Q in the camera window (or Ctrl+C in the terminal) to quit.
+Press C with an open hand to calibrate finger lengths.
 """
 
 from __future__ import annotations
@@ -142,6 +143,47 @@ def thumb_is_raised(lm, handedness_label: str) -> bool:
   return raised_with_fingers or raised_to_side
 
 
+# Filled by calibrate() when you press C. Not written to disk.
+# CALIBRATED_LM[i] = (x, y, z) for landmark i (0–20)
+# CALIBRATED_SEGMENTS[j] = (mcp_pip, pip_dip, dip_tip)
+#   j order: thumb, index, middle, ring, pinky
+#   thumb has no DIP, so its pip_dip is 0.0
+CALIBRATED_LM: list[tuple[float, float, float]] | None = None
+CALIBRATED_SEGMENTS: list[tuple[float, float, float]] | None = None
+FINGER_CAL_ORDER = ("thumb", "index", "middle", "ring", "pinky")
+
+
+def calibrate(lm) -> list[tuple[float, float, float]]:
+  """Save this frame's landmarks and per-bone lengths as in-memory arrays.
+
+  Hold an open hand (all fingers stretched) and press C. Later frames
+  compare each finger to these lengths, scaled by palm width so moving
+  closer to or farther from the camera does not throw the scale off.
+  """
+  global CALIBRATED_LM, CALIBRATED_SEGMENTS
+  landmarks = [_xyz(lm[i]) for i in range(21)]
+  segments: list[tuple[float, float, float]] = []
+  for name in FINGER_CAL_ORDER:
+    tip_i = FINGER_TIPS[name]
+    if name == "thumb":
+      mcp_pip = _dist(landmarks[2], landmarks[3])
+      pip_dip = 0.0
+      dip_tip = _dist(landmarks[3], landmarks[4])
+    else:
+      mcp = landmarks[tip_i - 3]
+      pip = landmarks[tip_i - 2]
+      dip = landmarks[tip_i - 1]
+      tip = landmarks[tip_i]
+      mcp_pip = _dist(mcp, pip)
+      pip_dip = _dist(pip, dip)
+      dip_tip = _dist(dip, tip)
+    segments.append((mcp_pip, pip_dip, dip_tip))
+
+  CALIBRATED_LM = landmarks
+  CALIBRATED_SEGMENTS = segments
+  return segments
+
+
 def finger_is_extended(lm, name: str) -> bool:
   """True when a finger is stretched out, no matter which way the hand faces.
 
@@ -152,7 +194,13 @@ def finger_is_extended(lm, name: str) -> bool:
   wrist = _xyz(lm[0])
   tip = _xyz(lm[FINGER_TIPS[name]])
   pip = _xyz(lm[FINGER_PIPS[name]])
-  return _dist(wrist, tip) > _dist(wrist, pip)
+  if CALIBRATED_LM is None:
+    return _dist(wrist, tip) > _dist(wrist, pip)
+  palm_width = _dist(_xyz(lm[5]), _xyz(lm[17])) or 1e-6
+  current = _dist(wrist, tip) / palm_width
+  cal_palm = _dist(CALIBRATED_LM[5], CALIBRATED_LM[17]) or 1e-6
+  full = _dist(CALIBRATED_LM[0], CALIBRATED_LM[FINGER_TIPS[name]]) / cal_palm
+  return current > 0.85 * full
 
 
 def _screen_direction(tip, mcp, min_len: float) -> str | None:
@@ -215,6 +263,69 @@ def hand_gesture(landmarks, handedness_label: str) -> str:
   # — still return a string so main() can concatenate it.
   return "unknown"
 
+_last_sign_debug_at = 0.0
+SIGN_DEBUG_EVERY_S = 7.0
+
+
+def sign_gesture(landmarks, handedness_label: str) -> str:
+  """Return the name of the sign gesture based on which fingers are raised"""
+  names = raised_fingers(landmarks, handedness_label)
+  lm = landmarks.landmark
+
+  wrist = _xyz(lm[0])
+
+  thumb_tip = _xyz(lm[4])
+  index_tip = _xyz(lm[8])
+  middle_tip = _xyz(lm[12])
+  ring_tip = _xyz(lm[16])
+  pinky_tip = _xyz(lm[20])
+
+  thumb_dip = _xyz(lm[3])
+  index_dip = _xyz(lm[7])
+  middle_dip = _xyz(lm[11])
+  ring_dip = _xyz(lm[15])
+  pinky_dip = _xyz(lm[19])
+
+  thumb_pip = _xyz(lm[2])
+  index_pip = _xyz(lm[6])
+  middle_pip = _xyz(lm[10])
+  ring_pip = _xyz(lm[14])
+  pinky_pip = _xyz(lm[18])
+
+  thumb_mcp = _xyz(lm[1])
+  index_mcp = _xyz(lm[5])
+  middle_mcp = _xyz(lm[9])
+  ring_mcp = _xyz(lm[13])
+  pinky_mcp = _xyz(lm[17])
+
+  
+  if not names:
+    return "fist"
+  if "thumb" in names and "index" not in names and "middle" not in names and "ring" not in names and "pinky" not in names and _dist(thumb_tip, thumb_mcp) > 0 and _dist(thumb_dip, index_mcp) < 0.07:
+    return "A"
+  if "thumb" not in names and "index" in names and "middle" in names and "ring" in names and "pinky" in names and _dist(thumb_tip, thumb_mcp) > 0 and (_dist(thumb_tip, middle_mcp) < 0.03 or _dist(thumb_tip, index_mcp) < 0.03 or _dist(thumb_tip, ring_mcp) < 0.07):
+    return "B"
+  if "index" in names and "middle" in names and "ring" in names and "pinky" in names and (lm[1].x < lm[4].x):
+    if lm[1].x < lm[17].x and _dist(index_tip, middle_tip) < 0.03 and _dist(middle_tip, ring_tip) < 0.04 and _dist(ring_tip, pinky_tip) < 0.08:
+        return "C"
+    else:
+      global _last_sign_debug_at
+      now = time.time()
+      if now - _last_sign_debug_at >= SIGN_DEBUG_EVERY_S:
+        _last_sign_debug_at = now
+        print("index, middle, ring, pinky are not close together", flush=True)
+        print("dist between index and middle", _dist(index_tip, middle_tip), flush=True)
+        print("dist between middle and ring", _dist(middle_tip, ring_tip), flush=True)
+        print("dist between ring and pinky", _dist(ring_tip, pinky_tip), flush=True)
+  if "index" in names and "middle" not in names and "ring" not in names and "pinky" not in names and _dist(thumb_tip, middle_tip) > 0.05 and (_dist(middle_tip, ring_tip) < 0.07 or _dist(ring_tip, pinky_tip) < 0.07) and (lm[5].y > lm[8].y):
+    return "D"
+  # if "thumb" not in names and "index" in names and "middle" in names and "ring" in names and "pinky" in names and _dist(thumb_tip, thumb_mcp) > 0 and (_dist(thumb_tip, middle_mcp) < 0.07 or _dist(thumb_tip, index_mcp) < 0.07):
+  #   return "E"
+  # if "thumb" not in names and "index" in names and "middle" in names and "ring" in names and "pinky" in names and _dist(thumb_tip, thumb_mcp) > 0 and (_dist(thumb_tip, middle_mcp) < 0.07 or _dist(thumb_tip, index_mcp) < 0.07):
+  #   return "F"
+  return "unknown"
+  
+  return "unknown"
 def finger_direction(landmarks, handedness_label: str) -> str:
   """Return which way each extended finger points on the camera."""
   lm = landmarks.landmark
@@ -309,6 +420,16 @@ def finger_touching(landmarks, handedness_label: str) -> str:
 
   return total_touching or "none"
 
+def detect_hand(landmarks, handedness_label: str) -> str:
+  """Return the hand gesture based on the landmarks"""
+  lm = landmarks.landmark
+
+  if lm[1].x < lm[17].x:
+    return "left"
+  if lm[1].x > lm[17].x:
+    return "right"
+  return "unknown"
+
 def format_fingers(names: list[str]) -> str:
     if not names:
       return "none"
@@ -346,7 +467,7 @@ def main() -> int:
     movement_until = 0.0
     movement_hold_s = 0.7
     
-    print("Camera on. Hold up a finger. Press Q to quit.\n")
+    print("Camera on. Hold up a finger. Press Q to quit. Press K to print landmark xyz. Press C with an open hand to calibrate.\n")
 
     with hands_solution.Hands(
       static_image_mode=False,
@@ -375,16 +496,20 @@ def main() -> int:
           touching = None
           movement_x = None
           movement_y = None
+          current_lm = None
+          sign = None
 
           if result.multi_hand_landmarks and result.multi_handedness:
             hand_landmarks = result.multi_hand_landmarks[0]
             lm = hand_landmarks.landmark
+            current_lm = lm
             handedness_label = result.multi_handedness[0].classification[0].label
             names = raised_fingers(hand_landmarks, handedness_label)
             message = format_fingers(names)
             gesture = hand_gesture(hand_landmarks, handedness_label)
             direction = finger_direction(hand_landmarks, handedness_label)
             touching = finger_touching(hand_landmarks, handedness_label)
+            sign = sign_gesture(hand_landmarks, handedness_label)
 
             drawer.draw_landmarks(
               frame,
@@ -429,6 +554,7 @@ def main() -> int:
               movement_until = now + movement_hold_s
               if now < movement_until and "index" in names:
                 movement_x = "index tip left"
+            
             if prev_index_tip is not None and _dist(index_tip, prev_index_tip) > 0.05 and prev_index_tip[0] < index_tip[0]:
               print("index tip moved right", flush=True)
               now = time.time()
@@ -491,12 +617,15 @@ def main() -> int:
               print(f"movement_x: {movement_x}", flush=True)
             if movement_y is not None:
               print(f"movement_y: {movement_y}", flush=True)
+            if sign is not None:
+              print(f"sign_gesture: {sign}", flush=True)
             last_message = status
             last_print_at = now
 
+          cal_hint = "calibrated" if CALIBRATED_LM is not None else "C to calibrate"
           cv2.putText(
             frame,
-            f"finger: {message}   (Q to quit)",
+            f"finger: {message}   (Q to quit, {cal_hint})",
             (20, 40),
             cv2.FONT_HERSHEY_SIMPLEX,
             1.0,
@@ -559,12 +688,53 @@ def main() -> int:
               2,
               cv2.LINE_AA,
             )
-          
+          if sign is not None:
+            cv2.putText(
+              frame,
+              f"sign_gesture: {sign}",
+              (20, 280),
+              cv2.FONT_HERSHEY_SIMPLEX,
+              1.0,
+              (0, 220, 0),
+              2,
+              cv2.LINE_AA,
+            )
           cv2.imshow("Day 3 — finger detector", frame)
 
           key = cv2.waitKey(1) & 0xFF
           if key in (ord("q"), ord("Q"), 27):
             break
+          if key in (ord("k"), ord("K")):
+            if current_lm is None:
+              print("no hand — no landmarks to print", flush=True)
+            else:
+              print("\n--- landmarks (x, y, z) ---", flush=True)
+              for i, point in enumerate(current_lm):
+                print(
+                  f"lm[{i}]  x={point.x:.4f}  y={point.y:.4f}  z={point.z:.4f}",
+                  flush=True,
+                )
+              print("--- end ---\n", flush=True)
+          if key in (ord("c"), ord("C")):
+            if current_lm is None:
+              print("no hand — nothing to calibrate", flush=True)
+            else:
+              cal = calibrate(current_lm)
+              print("\n--- calibrated finger lengths (open hand) ---", flush=True)
+              for i, point in enumerate(CALIBRATED_LM):
+                print(
+                  f"lm[{i}]  x={point[0]:.4f}  y={point[1]:.4f}  z={point[2]:.4f}",
+                  flush=True,
+                )
+              print("CALIBRATED_SEGMENTS  [mcp-pip, pip-dip, dip-tip]", flush=True)
+              for name, segs in zip(FINGER_CAL_ORDER, cal):
+                mcp_pip, pip_dip, dip_tip = segs
+                pip_dip_s = f"{pip_dip:.4f}" if name != "thumb" else "n/a"
+                print(
+                  f"  {name:7s}  [{mcp_pip:.4f}, {pip_dip_s}, {dip_tip:.4f}]",
+                  flush=True,
+                )
+              print("--- end ---\n", flush=True)
       except KeyboardInterrupt:
         print("\nStopped.")
       finally:
