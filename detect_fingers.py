@@ -266,9 +266,154 @@ def hand_gesture(landmarks, handedness_label: str) -> str:
 _last_sign_debug_at = 0.0
 SIGN_DEBUG_EVERY_S = 7.0
 
+def is_straight(finger : str, direction : str, landmarks) -> bool:
+  lm = landmarks.landmark
+
+  thumb_tip = _xyz(lm[4])
+  index_tip = _xyz(lm[8])
+  middle_tip = _xyz(lm[12])
+  ring_tip = _xyz(lm[16])
+  pinky_tip = _xyz(lm[20])
+
+  thumb_dip = _xyz(lm[3])
+  index_dip = _xyz(lm[7])
+  middle_dip = _xyz(lm[11])
+  ring_dip = _xyz(lm[15])
+  pinky_dip = _xyz(lm[19])
+
+  thumb_pip = _xyz(lm[2])
+  index_pip = _xyz(lm[6])
+  middle_pip = _xyz(lm[10])
+  ring_pip = _xyz(lm[14])
+  pinky_pip = _xyz(lm[18])
+
+  thumb_mcp = _xyz(lm[1])
+  index_mcp = _xyz(lm[5])
+  middle_mcp = _xyz(lm[9])
+  ring_mcp = _xyz(lm[13])
+  pinky_mcp = _xyz(lm[17])
+  
+  if finger == "thumb":
+    if direction == "up":
+      if (thumb_tip[1] - thumb_dip[1] < 0.05) and (thumb_dip[1] - thumb_pip[1] < 0.05) and (thumb_pip[1] - thumb_mcp[1] < 0.05):
+        print("Thumb is straight" + str(thumb_tip[1] - thumb_dip[1]) + " " + str(thumb_dip[1] - thumb_pip[1]) + " " + str(thumb_pip[1] - thumb_mcp[1]))
+        return True
+      else:
+        return False
+    if direction == "down":
+      if (thumb_tip[1] - thumb_dip[1] < -0.05) and (thumb_dip[1] - thumb_pip[1] < -0.05) and (thumb_pip[1] - thumb_mcp[1] < -0.05):
+        print("Thumb is straight" + str(thumb_tip[1] - thumb_dip[1]) + " " + str(thumb_dip[1] - thumb_pip[1]) + " " + str(thumb_pip[1] - thumb_mcp[1]))
+        return True
+      else:
+        return False
+    if direction == "left":
+      if (thumb_tip[0] - thumb_dip[0] < -0.05) and (thumb_dip[0] - thumb_pip[0] < -0.05) and (thumb_pip[0] - thumb_mcp[0] < -0.05):
+        print("Thumb is straight" + str(thumb_tip[1] - thumb_dip[1]) + " " + str(thumb_dip[1] - thumb_pip[1]) + " " + str(thumb_pip[1] - thumb_mcp[1]))
+        return True
+      else:
+        return False
+    if direction == "right":
+      if (thumb_tip[0] - thumb_dip[0] < 0.05) and (thumb_dip[0] - thumb_pip[0] < 0.05) and (thumb_pip[0] - thumb_mcp[0] < 0.05):
+        print("Thumb is straight" + str(thumb_tip[1] - thumb_dip[1]) + " " + str(thumb_dip[1] - thumb_pip[1]) + " " + str(thumb_pip[1] - thumb_mcp[1]))
+        return True
+      else:
+        return False
+  if finger == "index":
+    if direction == "up":
+      if (index_tip[1] - index_dip[1] < 0.05) and (index_dip[1] - index_pip[1] < 0.05) and (index_pip[1] - index_mcp[1] < 0.05):
+        print("Index is straight" + str(index_tip[1] - index_dip[1]) + " " + str(index_dip[1] - index_pip[1]) + " " + str(index_pip[1] - index_mcp[1]))
+        return True
+      else:
+        return False
+    if direction == "down":
+      if (index_tip[1] - index_dip[1] < -0.05) and (index_dip[1] - index_pip[1] < -0.05) and (index_pip[1] - index_mcp[1] < -0.05):
+        print("Index is straight" + str(index_tip[1] - index_dip[1]) + " " + str(index_dip[1] - index_pip[1]) + " " + str(index_pip[1] - index_mcp[1]))
+        return True
+      else:
+        return False
+    if direction == "left":
+      if (index_tip[0] - index_dip[0] < -0.05) and (index_dip[0] - index_pip[0] < -0.05) and (index_pip[0] - index_mcp[0] < -0.05):
+        print("Index is straight" + str(index_tip[1] - index_dip[1]) + " " + str(index_dip[1] - index_pip[1]) + " " + str(index_pip[1] - index_mcp[1]))
+        return True
+      else:
+        return False
+    if direction == "right":
+      if (index_tip[0] - index_dip[0] < 0.05) and (index_dip[0] - index_pip[0] < 0.05) and (index_pip[0] - index_mcp[0] < 0.05):
+        print("Index is straight" + str(index_tip[1] - index_dip[1]) + " " + str(index_dip[1] - index_pip[1]) + " " + str(index_pip[1] - index_mcp[1]))
+        return True
+      else:
+        return False
+  if finger == "middle":
+    if (middle_tip[1] - middle_dip[1] < 0.05) and (middle_dip[1] - middle_pip[1] < 0.05) and (middle_pip[1] - middle_mcp[1] < 0.05):
+      return True
+    else:
+      return False
+  if finger == "ring":
+    if (ring_tip[1] - ring_dip[1] < 0.05) and (ring_dip[1] - ring_pip[1] < 0.05) and (ring_pip[1] - ring_mcp[1] < 0.05):
+      return True
+    else:
+      return False
+  if finger == "pinky":
+    if (pinky_tip[1] - pinky_dip[1] < 0.05) and (pinky_dip[1] - pinky_pip[1] < 0.05) and (pinky_pip[1] - pinky_mcp[1] < 0.05):
+      return True
+    else:
+      return False
+  
+  return index_tip[2] > index_dip[2]
+
+
+def is_hook(finger : str, direction : str, landmarks) -> bool:
+  """True for ASL X: index hooked, not a straight G.
+
+  MCP → PIP  up
+  PIP → DIP  up-left
+  DIP → TIP  down-left
+  """
+  lm = landmarks.landmark
+
+  index_mcp = _xyz(lm[5])
+  index_pip = _xyz(lm[6])
+  index_dip = _xyz(lm[7])
+  index_tip = _xyz(lm[8])
+
+  if finger == "index":
+    if direction == "left":
+      mcp_to_pip = index_pip[1] < index_mcp[1]
+      pip_to_dip = index_dip[0] < index_pip[0] and index_dip[1] < index_pip[1]
+      dip_to_tip = index_tip[0] < index_dip[0] and index_tip[1] > index_dip[1]
+      if mcp_to_pip and pip_to_dip and dip_to_tip:
+        return True
+      else:
+        return False  
+    if direction == "right":
+      mcp_to_pip = index_pip[1] > index_mcp[1]
+      pip_to_dip = index_dip[0] > index_pip[0] and index_dip[1] > index_pip[1]
+      dip_to_tip = index_tip[0] > index_dip[0] and index_tip[1] < index_dip[1]
+      if mcp_to_pip and pip_to_dip and dip_to_tip:
+        return True
+      else:
+        return False
+  return False
+
+def fingers_up(fingers: str,landmarks, handedness_label: str) -> list[str]:
+  false_count = 0
+  names = raised_fingers(landmarks, handedness_label)
+  if ("thumb" in fingers and "thumb" not in names) or ("thumb" not in fingers and "thumb" in names):
+    false_count += 1
+  if ("index" in fingers and "index" not in names) or ("index" not in fingers and "index" in names):
+    false_count += 1
+  if ("middle" in fingers and "middle" not in names) or ("middle" not in fingers and "middle" in names):
+    false_count += 1
+  if ("ring" in fingers and "ring" not in names) or ("ring" not in fingers and "ring" in names):
+    false_count += 1
+  if ("pinky" in fingers and "pinky" not in names) or ("pinky" not in fingers and "pinky" in names):
+    false_count += 1
+  
+  return false_count
 
 def sign_gesture(landmarks, handedness_label: str) -> str:
   """Return the name of the sign gesture based on which fingers are raised"""
+  global _last_sign_debug_at
   names = raised_fingers(landmarks, handedness_label)
   lm = landmarks.landmark
 
@@ -298,31 +443,56 @@ def sign_gesture(landmarks, handedness_label: str) -> str:
   ring_mcp = _xyz(lm[13])
   pinky_mcp = _xyz(lm[17])
 
+  direction = finger_direction(landmarks, handedness_label)
+  x_hook = index_is_x_hook(index_mcp, index_pip, index_dip, index_tip)
   
-  if not names:
-    return "fist"
-  if "thumb" in names and "index" not in names and "middle" not in names and "ring" not in names and "pinky" not in names and _dist(thumb_tip, thumb_mcp) > 0 and _dist(thumb_dip, index_mcp) < 0.07:
+  if fingers_up("thumb", landmarks, handedness_label) == 0 and thumb_tip[1] > thumb_mcp[1] and _dist(thumb_dip, index_mcp) < 0.07:
     return "A"
-  if "thumb" not in names and "index" in names and "middle" in names and "ring" in names and "pinky" in names and _dist(thumb_tip, thumb_mcp) > 0 and (_dist(thumb_tip, middle_mcp) < 0.03 or _dist(thumb_tip, index_mcp) < 0.03 or _dist(thumb_tip, ring_mcp) < 0.07):
+  if fingers_up("index, middle, ring, pinky", landmarks, handedness_label) == 0 and _dist(thumb_tip, thumb_mcp) > 0 and (_dist(thumb_tip, middle_mcp) < 0.03 or _dist(thumb_tip, index_mcp) < 0.03 or _dist(thumb_tip, ring_mcp) < 0.07):
     return "B"
-  if "index" in names and "middle" in names and "ring" in names and "pinky" in names and (lm[1].x < lm[4].x):
-    if lm[1].x < lm[17].x and _dist(index_tip, middle_tip) < 0.03 and _dist(middle_tip, ring_tip) < 0.04 and _dist(ring_tip, pinky_tip) < 0.08:
-        return "C"
-    else:
-      global _last_sign_debug_at
-      now = time.time()
-      if now - _last_sign_debug_at >= SIGN_DEBUG_EVERY_S:
-        _last_sign_debug_at = now
-        print("index, middle, ring, pinky are not close together", flush=True)
-        print("dist between index and middle", _dist(index_tip, middle_tip), flush=True)
-        print("dist between middle and ring", _dist(middle_tip, ring_tip), flush=True)
-        print("dist between ring and pinky", _dist(ring_tip, pinky_tip), flush=True)
-  if "index" in names and "middle" not in names and "ring" not in names and "pinky" not in names and _dist(thumb_tip, middle_tip) > 0.05 and (_dist(middle_tip, ring_tip) < 0.07 or _dist(ring_tip, pinky_tip) < 0.07) and (lm[5].y > lm[8].y):
+  if (fingers_up("thumb, index, middle, ring, pinky", landmarks, handedness_label) == 0 or fingers_up("index, middle, ring, pinky", landmarks, handedness_label) == 0):
+    if "index right" in direction and "middle right" in direction and "ring right" in direction and "pinky right" in direction and _dist(index_tip, middle_tip) < 0.03 and _dist(middle_tip, ring_tip) < 0.04 and _dist(ring_tip, pinky_tip) < 0.08:
+      return "C"
+  if (fingers_up("index", landmarks, handedness_label) == 0 or fingers_up("thumb,index", landmarks, handedness_label) == 0) and _dist(thumb_tip, middle_tip) < 0.05 and (_dist(middle_tip, ring_tip) < 0.07 or _dist(ring_tip, pinky_tip) < 0.07) and (index_mcp[1] > index_tip[1]) and not x_hook:
     return "D"
-  # if "thumb" not in names and "index" in names and "middle" in names and "ring" in names and "pinky" in names and _dist(thumb_tip, thumb_mcp) > 0 and (_dist(thumb_tip, middle_mcp) < 0.07 or _dist(thumb_tip, index_mcp) < 0.07):
-  #   return "E"
-  # if "thumb" not in names and "index" in names and "middle" in names and "ring" in names and "pinky" in names and _dist(thumb_tip, thumb_mcp) > 0 and (_dist(thumb_tip, middle_mcp) < 0.07 or _dist(thumb_tip, index_mcp) < 0.07):
-  #   return "F"
+  if fingers_up("thumb, index, middle, ring, pinky", landmarks, handedness_label) == 5  and (_dist(thumb_tip, index_tip) < 0.07 or _dist(thumb_tip, middle_tip) < 0.07 or _dist(thumb_tip, ring_tip) < 0.07 or _dist(thumb_tip, pinky_tip) < 0.07):
+    return "E"
+  if fingers_up("middle, ring, pinky", landmarks, handedness_label) == 0 and _dist(thumb_tip, index_tip) < 0.07:
+    return "F"
+  if fingers_up("thumb, index", landmarks, handedness_label) == 0 and "thumb left" in direction and "index left" in direction and _dist(thumb_tip, index_tip) < 0.5 and thumb_tip[1] > index_tip[1] and is_straight("thumb", "left", landmarks) and is_straight("index", "left", landmarks) and not x_hook:
+    return "G"
+  if fingers_up("index, middle", landmarks, handedness_label) == 0 and "index left" in direction and "middle left" in direction and _dist(index_tip, middle_tip) < 0.1:
+    return "H"
+  if fingers_up("pinky", landmarks, handedness_label) == 0 and (_dist(thumb_dip, index_mcp) < 0.07 or _dist(thumb_dip, middle_mcp) < 0.07 or _dist(thumb_dip, ring_mcp) < 0.07):
+    return "I"
+  # J track movement
+  if fingers_up("index, middle", landmarks, handedness_label) == 0 and "index up" in direction and "middle up" in direction and _dist(thumb_tip, index_mcp) < 0.07 and _dist(thumb_tip, middle_mcp) < 0.07:
+    return "K"
+  if fingers_up("thumb, index", landmarks, handedness_label) == 0 and "thumb right" in direction and "index up" in direction:
+    return "L"
+  # M and N (thumb is invisible)
+  if fingers_up("thumb, index, middle, ring, pinky", landmarks, handedness_label) == 5 and "thumb right" in direction and _dist(thumb_tip, index_tip) < 0.07 and _dist(thumb_tip, middle_tip) < 0.07 and _dist(thumb_tip, ring_tip) < 0.07 and _dist(thumb_tip, pinky_tip) < 0.07:
+    return "O"
+  if fingers_up("index, middle", landmarks, handedness_label) == 0 and "index left" in direction and "middle left" in direction and "middle down" in direction and _dist(thumb_tip, index_pip) < 0.07 and _dist(thumb_pip, middle_mcp) < 0.07:
+    return "P"
+  if fingers_up("index", landmarks, handedness_label) == 0 and "thumb left" in direction and "thumb down" in direction and"index left" in direction and "index down" in direction and _dist(thumb_tip, index_tip) < 0.3:
+    return "Q"
+  if fingers_up("index, middle", landmarks, handedness_label) == 0 and _dist(thumb_tip, index_mcp) < 0.07 and _dist(index_dip, middle_dip) < 0.03 and index_tip[0] < middle_tip[0]:
+    return "R"
+  if fingers_up("thumb, index, middle, ring, pinky", landmarks, handedness_label) == 5 and (_dist(thumb_tip, index_dip) < 0.07 or _dist(thumb_tip, middle_dip) < 0.07) and (index_tip[2] > index_dip[2] and middle_tip[2] > middle_dip[2]):
+    return "S" # must find a way to differentiate between E and S
+  if fingers_up("index, middle, ring, pinky", landmarks, handedness_label) >= 4 and "thumb up" in direction and (_dist(thumb_dip, index_mcp) < 0.1 or _dist(thumb_dip, index_pip) < 0.1) and (_dist(thumb_dip, middle_mcp) < 0.1 or _dist(thumb_dip, middle_pip) < 0.1):
+    return "T"
+  if fingers_up("index, middle", landmarks, handedness_label) == 0 and _dist(thumb_tip, ring_mcp) < 0.07 and _dist(index_tip, middle_tip) < 0.07:
+    return "U"
+  if fingers_up("index, middle", landmarks, handedness_label) == 0 and _dist(thumb_tip, ring_mcp) < 0.07 and _dist(index_tip, middle_tip) < 0.2:
+    return "V"
+  if fingers_up("index, middle, ring", landmarks, handedness_label) == 0 and _dist(thumb_tip, pinky_mcp) < 0.07 and _dist(index_tip, middle_tip) < 0.2 and _dist(middle_tip, ring_tip) < 0.2:
+    return "W"
+  if fingers_up("index", landmarks, handedness_label) == 0 and "index left" in direction and _dist(thumb_tip, middle_tip) < 0.07 and is_straight("index", "left", landmarks) == False and is_hook("index", "left", landmarks) == False:
+    return "X"
+  # else:
+    # print("fingers_up(index, middle, ring, pinky, landmarks, handedness_label)", fingers_up("index, middle, ring, pinky", landmarks, handedness_label))
   return "unknown"
   
   return "unknown"
@@ -350,35 +520,50 @@ def finger_direction(landmarks, handedness_label: str) -> str:
   
   # _xyz() returns (x, y, z), so use [1] for y — not .y.
   # Image y grows downward: smaller y = higher on screen = pointing up.
-  if "thumb" in names and (thumb_tip[1] < thumb_mcp[1]):
-    total_direction += "thumbs up, "
+  if (thumb_tip[1] < thumb_mcp[1]):
+    total_direction += "thumb up, "
+  if (thumb_tip[1] > thumb_mcp[1]):
+    total_direction += "thumb down, "
+  if (thumb_tip[0] > thumb_mcp[0]):
+    total_direction += "thumb right, "
+  if (thumb_tip[0] < thumb_mcp[0]):
+    total_direction += "thumb left, "
 
-  if "thumb" in names and (thumb_tip[1] > thumb_mcp[1]):
-    total_direction += "thumbs down, "
-  
-  if "index" in names and (index_tip[1] < index_mcp[1]):
+  if (index_tip[1] < index_mcp[1]):
     total_direction += "index up, "
-  
-  if "index" in names and (index_tip[1] > index_mcp[1]):
+  if (index_tip[1] > index_mcp[1]):
     total_direction += "index down, "
-  
-  if "middle" in names and (middle_tip[1] < middle_mcp[1]):
+  if "index" in names and (index_tip[0] > index_mcp[0]):
+    total_direction += "index right, "
+  if (index_tip[0] < index_mcp[0]):
+    total_direction += "index left, "
+
+  if (middle_tip[1] < middle_mcp[1]):
     total_direction += "middle up, "
-  
-  if "middle" in names and (middle_tip[1] > middle_mcp[1]):
+  if (middle_tip[1] > middle_mcp[1]):
     total_direction += "middle down, "
-  
-  if "ring" in names and (ring_tip[1] < ring_mcp[1]):
+  if (middle_tip[0] > middle_mcp[0]):
+    total_direction += "middle right, "
+  if (middle_tip[0] < middle_mcp[0]):
+    total_direction += "middle left, "
+
+  if (ring_tip[1] < ring_mcp[1]):
     total_direction += "ring up, "
-  
-  if "ring" in names and (ring_tip[1] > ring_mcp[1]):
+  if (ring_tip[1] > ring_mcp[1]):
     total_direction += "ring down, "
-  
-  if "pinky" in names and (pinky_tip[1] < pinky_mcp[1]):
+  if (ring_tip[0] > ring_mcp[0]):
+    total_direction += "ring right, "
+  if (ring_tip[0] < ring_mcp[0]):
+    total_direction += "ring left, "
+
+  if (pinky_tip[1] < pinky_mcp[1]):
     total_direction += "pinky up, "
-  
-  if "pinky" in names and (pinky_tip[1] > pinky_mcp[1]):
+  if (pinky_tip[1] > pinky_mcp[1]):
     total_direction += "pinky down, "
+  if (pinky_tip[0] > pinky_mcp[0]):
+    total_direction += "pinky right, "
+  if (pinky_tip[0] < pinky_mcp[0]):
+    total_direction += "pinky left, "
 
   return total_direction
     
