@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 import sys
 import time
+from unittest import skip
 
 import cv2
 import mediapipe as mp
@@ -395,7 +396,7 @@ def is_hook(finger : str, direction : str, landmarks) -> bool:
         return False
   return False
 
-def fingers_up(fingers: str,landmarks, handedness_label: str) -> list[str]:
+def fingers_up(fingers: str, landmarks, handedness_label: str = "Right") -> int:
   false_count = 0
   names = raised_fingers(landmarks, handedness_label)
   if ("thumb" in fingers and "thumb" not in names) or ("thumb" not in fingers and "thumb" in names):
@@ -444,58 +445,60 @@ def sign_gesture(landmarks, handedness_label: str) -> str:
   pinky_mcp = _xyz(lm[17])
 
   direction = finger_direction(landmarks, handedness_label)
-  x_hook = index_is_x_hook(index_mcp, index_pip, index_dip, index_tip)
+  x_hook = is_hook("index", "left", landmarks)
   
-  if fingers_up("thumb", landmarks, handedness_label) == 0 and thumb_tip[1] > thumb_mcp[1] and _dist(thumb_dip, index_mcp) < 0.07:
+  if fingers_up("thumb", landmarks) == 0 and thumb_tip[1] > thumb_mcp[1] and _dist(thumb_dip, index_mcp) < 0.07:
     return "A"
-  if fingers_up("index, middle, ring, pinky", landmarks, handedness_label) == 0 and _dist(thumb_tip, thumb_mcp) > 0 and (_dist(thumb_tip, middle_mcp) < 0.03 or _dist(thumb_tip, index_mcp) < 0.03 or _dist(thumb_tip, ring_mcp) < 0.07):
+  if fingers_up("index, middle, ring, pinky", landmarks) == 0 and _dist(thumb_tip, thumb_mcp) > 0 and (_dist(thumb_tip, middle_mcp) < 0.03 or _dist(thumb_tip, index_mcp) < 0.03 or _dist(thumb_tip, ring_mcp) < 0.07):
     return "B"
-  if (fingers_up("thumb, index, middle, ring, pinky", landmarks, handedness_label) == 0 or fingers_up("index, middle, ring, pinky", landmarks, handedness_label) == 0):
+  if (fingers_up("thumb, index, middle, ring, pinky", landmarks) == 0 or fingers_up("index, middle, ring, pinky", landmarks) == 0):
     if "index right" in direction and "middle right" in direction and "ring right" in direction and "pinky right" in direction and _dist(index_tip, middle_tip) < 0.03 and _dist(middle_tip, ring_tip) < 0.04 and _dist(ring_tip, pinky_tip) < 0.08:
       return "C"
-  if (fingers_up("index", landmarks, handedness_label) == 0 or fingers_up("thumb,index", landmarks, handedness_label) == 0) and _dist(thumb_tip, middle_tip) < 0.05 and (_dist(middle_tip, ring_tip) < 0.07 or _dist(ring_tip, pinky_tip) < 0.07) and (index_mcp[1] > index_tip[1]) and not x_hook:
+  if (fingers_up("index", landmarks) == 0 or fingers_up("thumb,index", landmarks) == 0) and _dist(thumb_tip, middle_tip) < 0.05 and (_dist(middle_tip, ring_tip) < 0.07 or _dist(ring_tip, pinky_tip) < 0.07) and (index_mcp[1] > index_tip[1]) and not x_hook:
     return "D"
-  if fingers_up("thumb, index, middle, ring, pinky", landmarks, handedness_label) == 5  and (_dist(thumb_tip, index_tip) < 0.07 or _dist(thumb_tip, middle_tip) < 0.07 or _dist(thumb_tip, ring_tip) < 0.07 or _dist(thumb_tip, pinky_tip) < 0.07):
+  if fingers_up("thumb, index, middle, ring, pinky", landmarks) == 5  and (_dist(thumb_tip, index_tip) < 0.07 or _dist(thumb_tip, middle_tip) < 0.07 or _dist(thumb_tip, ring_tip) < 0.07 or _dist(thumb_tip, pinky_tip) < 0.07):
     return "E"
-  if fingers_up("middle, ring, pinky", landmarks, handedness_label) == 0 and _dist(thumb_tip, index_tip) < 0.07:
+  if fingers_up("middle, ring, pinky", landmarks) == 0 and _dist(thumb_tip, index_tip) < 0.07:
     return "F"
-  if fingers_up("thumb, index", landmarks, handedness_label) == 0 and "thumb left" in direction and "index left" in direction and _dist(thumb_tip, index_tip) < 0.5 and thumb_tip[1] > index_tip[1] and is_straight("thumb", "left", landmarks) and is_straight("index", "left", landmarks) and not x_hook:
+  if fingers_up("thumb, index", landmarks) == 0 and "thumb left" in direction and "index left" in direction and _dist(thumb_tip, index_tip) < 0.5 and thumb_tip[1] > index_tip[1] and is_straight("thumb", "left", landmarks) and is_straight("index", "left", landmarks) and not x_hook:
     return "G"
-  if fingers_up("index, middle", landmarks, handedness_label) == 0 and "index left" in direction and "middle left" in direction and _dist(index_tip, middle_tip) < 0.1:
+  if fingers_up("index, middle", landmarks) == 0 and "index left" in direction and "middle left" in direction and _dist(index_tip, middle_tip) < 0.1:
     return "H"
-  if fingers_up("pinky", landmarks, handedness_label) == 0 and (_dist(thumb_dip, index_mcp) < 0.07 or _dist(thumb_dip, middle_mcp) < 0.07 or _dist(thumb_dip, ring_mcp) < 0.07):
+  if fingers_up("pinky", landmarks) == 0 and (_dist(thumb_dip, index_mcp) < 0.07 or _dist(thumb_dip, middle_mcp) < 0.07 or _dist(thumb_dip, ring_mcp) < 0.07):
     return "I"
   # J track movement
-  if fingers_up("index, middle", landmarks, handedness_label) == 0 and "index up" in direction and "middle up" in direction and _dist(thumb_tip, index_mcp) < 0.07 and _dist(thumb_tip, middle_mcp) < 0.07:
+  if fingers_up("index, middle", landmarks) == 0 and "index up" in direction and "middle up" in direction and _dist(thumb_tip, index_mcp) < 0.07 and _dist(thumb_tip, middle_mcp) < 0.07:
     return "K"
-  if fingers_up("thumb, index", landmarks, handedness_label) == 0 and "thumb right" in direction and "index up" in direction:
+  if fingers_up("thumb, index", landmarks) == 0 and "thumb right" in direction and "index up" in direction:
     return "L"
   # M and N (thumb is invisible)
-  if fingers_up("thumb, index, middle, ring, pinky", landmarks, handedness_label) == 5 and "thumb right" in direction and _dist(thumb_tip, index_tip) < 0.07 and _dist(thumb_tip, middle_tip) < 0.07 and _dist(thumb_tip, ring_tip) < 0.07 and _dist(thumb_tip, pinky_tip) < 0.07:
+  if fingers_up("thumb, index, middle, ring, pinky", landmarks) == 5 and "thumb right" in direction and _dist(thumb_tip, index_tip) < 0.07 and _dist(thumb_tip, middle_tip) < 0.07 and _dist(thumb_tip, ring_tip) < 0.07 and _dist(thumb_tip, pinky_tip) < 0.07:
     return "O"
-  if fingers_up("index, middle", landmarks, handedness_label) == 0 and "index left" in direction and "middle left" in direction and "middle down" in direction and _dist(thumb_tip, index_pip) < 0.07 and _dist(thumb_pip, middle_mcp) < 0.07:
+  if fingers_up("index, middle", landmarks) == 0 and "index left" in direction and "middle left" in direction and "middle down" in direction and _dist(thumb_tip, index_pip) < 0.07 and _dist(thumb_pip, middle_mcp) < 0.07:
     return "P"
-  if fingers_up("index", landmarks, handedness_label) == 0 and "thumb left" in direction and "thumb down" in direction and"index left" in direction and "index down" in direction and _dist(thumb_tip, index_tip) < 0.3:
+  if fingers_up("index", landmarks) == 0 and "thumb left" in direction and "thumb down" in direction and"index left" in direction and "index down" in direction and _dist(thumb_tip, index_tip) < 0.3:
     return "Q"
-  if fingers_up("index, middle", landmarks, handedness_label) == 0 and _dist(thumb_tip, index_mcp) < 0.07 and _dist(index_dip, middle_dip) < 0.03 and index_tip[0] < middle_tip[0]:
+  if fingers_up("index, middle", landmarks) == 0 and _dist(thumb_tip, index_mcp) < 0.07 and _dist(index_dip, middle_dip) < 0.03 and index_tip[0] < middle_tip[0]:
     return "R"
-  if fingers_up("thumb, index, middle, ring, pinky", landmarks, handedness_label) == 5 and (_dist(thumb_tip, index_dip) < 0.07 or _dist(thumb_tip, middle_dip) < 0.07) and (index_tip[2] > index_dip[2] and middle_tip[2] > middle_dip[2]):
+  if fingers_up("thumb, index, middle, ring, pinky", landmarks) == 5 and (_dist(thumb_tip, index_dip) < 0.07 or _dist(thumb_tip, middle_dip) < 0.07) and (index_tip[2] > index_dip[2] and middle_tip[2] > middle_dip[2]):
     return "S" # must find a way to differentiate between E and S
-  if fingers_up("index, middle, ring, pinky", landmarks, handedness_label) >= 4 and "thumb up" in direction and (_dist(thumb_dip, index_mcp) < 0.1 or _dist(thumb_dip, index_pip) < 0.1) and (_dist(thumb_dip, middle_mcp) < 0.1 or _dist(thumb_dip, middle_pip) < 0.1):
+  if fingers_up("index, middle, ring, pinky", landmarks) >= 4 and "thumb up" in direction and (_dist(thumb_dip, index_mcp) < 0.1 or _dist(thumb_dip, index_pip) < 0.1) and (_dist(thumb_dip, middle_mcp) < 0.1 or _dist(thumb_dip, middle_pip) < 0.1):
     return "T"
-  if fingers_up("index, middle", landmarks, handedness_label) == 0 and _dist(thumb_tip, ring_mcp) < 0.07 and _dist(index_tip, middle_tip) < 0.07:
+  if fingers_up("index, middle", landmarks) == 0 and _dist(thumb_tip, ring_mcp) < 0.07 and _dist(index_tip, middle_tip) < 0.07:
     return "U"
-  if fingers_up("index, middle", landmarks, handedness_label) == 0 and _dist(thumb_tip, ring_mcp) < 0.07 and _dist(index_tip, middle_tip) < 0.2:
+  if fingers_up("index, middle", landmarks) == 0 and _dist(thumb_tip, ring_mcp) < 0.07 and _dist(index_tip, middle_tip) < 0.2:
     return "V"
-  if fingers_up("index, middle, ring", landmarks, handedness_label) == 0 and _dist(thumb_tip, pinky_mcp) < 0.07 and _dist(index_tip, middle_tip) < 0.2 and _dist(middle_tip, ring_tip) < 0.2:
+  if fingers_up("index, middle, ring", landmarks) == 0 and _dist(thumb_tip, pinky_mcp) < 0.07 and _dist(index_tip, middle_tip) < 0.2 and _dist(middle_tip, ring_tip) < 0.2:
     return "W"
-  if fingers_up("index", landmarks, handedness_label) == 0 and "index left" in direction and _dist(thumb_tip, middle_tip) < 0.07 and is_straight("index", "left", landmarks) == False and is_hook("index", "left", landmarks) == False:
+  if fingers_up("index", landmarks) == 0 and "index left" in direction and _dist(thumb_tip, middle_tip) < 0.07 and is_straight("index", "left", landmarks) == False and is_hook("index", "left", landmarks) == False:
     return "X"
+  if fingers_up("index, middle, ring, pinky", landmarks) == 0:
+    return "Y"
+  # Z movement
   # else:
-    # print("fingers_up(index, middle, ring, pinky, landmarks, handedness_label)", fingers_up("index, middle, ring, pinky", landmarks, handedness_label))
+    # print("fingers_up(index, middle, ring, pinky, landmarks)", fingers_up("index, middle, ring, pinky", landmarks, handedness_label))
   return "unknown"
-  
-  return "unknown"
+
 def finger_direction(landmarks, handedness_label: str) -> str:
   """Return which way each extended finger points on the camera."""
   lm = landmarks.landmark
@@ -651,8 +654,18 @@ def main() -> int:
     
     movement_until = 0.0
     movement_hold_s = 0.7
+
+    prev_gesture = ""
+    prev_gesture_time = 0.0
+    last_fist_at = -999.0
+    last_hi_at = -999.0
+    fist_open_count = 0
+    open_fist_count = 0
+    prev_fist_to_hi = 0.0
+    prev_hi_to_fist = 0.0
+    recording = False
     
-    print("Camera on. Hold up a finger. Press Q to quit. Press K to print landmark xyz. Press C with an open hand to calibrate.\n")
+    print("Camera on. Hold up a finger. Press Q : quit. Press K : print landmark xyz. Press C with an open hand to calibrate.\n")
 
     with hands_solution.Hands(
       static_image_mode=False,
@@ -692,6 +705,35 @@ def main() -> int:
             names = raised_fingers(hand_landmarks, handedness_label)
             message = format_fingers(names)
             gesture = hand_gesture(hand_landmarks, handedness_label)
+            if (prev_gesture == ""):
+              prev_gesture = gesture
+              prev_gesture_time = time.time()
+            else:
+              if (prev_gesture != gesture) and (gesture != "unknown"):
+                print(f"prev_gesture: {prev_gesture}, gesture: {gesture}", flush=True)
+                print("time : ", time.time(), "prev_gesture_time : ", prev_gesture_time, flush=True)
+
+                if recording == False and (time.time() - prev_gesture_time > 0.5) and prev_gesture == "fist" and gesture == "hi":
+                  prev_fist_to_hi = time.time()
+                  if fist_open_count == 0:
+                    open_fist_count += 1
+                    print("open_fist = 1\n", flush=True)
+                  if (time.time() - prev_fist_to_hi < 1):
+                    print("Start recording now:\n", flush=True)
+                    recording = True
+                    open_fist_count = 0
+                if recording == True and (time.time() - prev_gesture_time > 0.5) and prev_gesture == "hi" and gesture == "fist":
+                  prev_hi_to_fist = time.time()                
+                  if open_fist_count == 0:
+                    open_fist_count += 1
+                  if (time.time() - prev_hi_to_fist < 1):
+                    print("Stop recording now:\n", flush=True)
+                    recording = False
+                    fist_open_count = 0
+                prev_gesture = gesture
+                prev_gesture_time = time.time()
+              
+
             direction = finger_direction(hand_landmarks, handedness_label)
             touching = finger_touching(hand_landmarks, handedness_label)
             sign = sign_gesture(hand_landmarks, handedness_label)
@@ -730,7 +772,8 @@ def main() -> int:
               and "index" in names
             ):
               movement_until = now + movement_hold_s
-            if now < movement_until and "index" in names:
+            
+            if now < movement_until and fingers_up("index", hand_landmarks) == 0:
               gesture = "nahhh"
             
             if prev_index_tip is not None and _dist(index_tip, prev_index_tip) > 0.05 and prev_index_tip[0] > index_tip[0]:
@@ -792,18 +835,18 @@ def main() -> int:
           status = (message, gesture, direction, touching, movement_x, movement_y)
           if status != last_message and (now - last_print_at) > 0.15:
             print(message, flush=True)
-            if gesture is not None:
-              print(f"gesture: {gesture}", flush=True)
-            if direction is not None:
-              print(f"direction: {direction}", flush=True)
-            if touching is not None:
-              print(f"touching: {touching}", flush=True)
-            if movement_x is not None:
-              print(f"movement_x: {movement_x}", flush=True)
-            if movement_y is not None:
-              print(f"movement_y: {movement_y}", flush=True)
-            if sign is not None:
-              print(f"sign_gesture: {sign}", flush=True)
+            # if gesture is not None:
+            #   print(f"gesture: {gesture}", flush=True)
+            # if direction is not None:
+            #   print(f"direction: {direction}", flush=True)
+            # if touching is not None:
+            #   print(f"touching: {touching}", flush=True)
+            # if movement_x is not None:
+            #   print(f"movement_x: {movement_x}", flush=True)
+            # if movement_y is not None:
+            #   print(f"movement_y: {movement_y}", flush=True)
+            # if sign is not None:
+            #   print(f"sign_gesture: {sign}", flush=True)
             last_message = status
             last_print_at = now
 

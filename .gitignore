@@ -2,3 +2,5 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
+lm_distances.py
+visualize_hand.py
