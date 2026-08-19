@@ -1,0 +1,6 @@
+source venv/bin/activate
+
+python detect_fingers.py
+
+python move_me.py
+pythone sign_me.py
