@@ -250,13 +250,13 @@ def hand_gesture(landmarks, handedness_label: str) -> str:
     return "fist"
   if (fingers_up("thumb, index, middle, ring, pinky", landmarks, handedness_label) == 0):
     return "hi"
-  if (fingers_up("thumb, index", landmarks, handedness_label) == 0 and fingers_up("middle, ring, pinky", landmarks, handedness_label) == 3):
+  if (fingers_up("thumb, index", landmarks, handedness_label) == 0 and fingers_down("middle, ring, pinky", landmarks, handedness_label) == 0):
     return "zoom"
-  if (fingers_up("thumb, index, middle", landmarks, handedness_label) == 0 and fingers_up("ring, pinky", landmarks, handedness_label) == 2):
+  if (fingers_up("thumb, index, middle", landmarks, handedness_label) == 0 and fingers_down("ring, pinky", landmarks, handedness_label) == 0):
     return "slide"
-  if (fingers_up("index, middle", landmarks, handedness_label) == 0 and fingers_up("thumb, ring, pinky", landmarks, handedness_label) == 3):
+  if (fingers_up("index, middle", landmarks, handedness_label) == 0 and fingers_down("thumb, ring, pinky", landmarks, handedness_label) == 0):
     return "scroll"
-  if (fingers_up("index", landmarks, handedness_label) == 0 and fingers_up("thumb, middle, ring, pinky", landmarks, handedness_label) == 4):
+  if (fingers_up("index", landmarks, handedness_label) == 0 and fingers_down("thumb, middle, ring, pinky", landmarks, handedness_label) == 0):
     return "click"
   
   # Any other mix of raised fingers has no named pose
@@ -545,22 +545,37 @@ def is_hook(finger : str, direction : str, landmarks) -> bool:
 def fingers_up(fingers: str, landmarks, handedness_label: str = "Right") -> int:
   """Return the count of fingers that are not up within the given list of fingers
     This reduces the lenght of if conditons and also could be used to check if a a list of
-    fingers are up or down.
-    (if checking for down use fingers_up(fingers, landmarks, handedness_label) == # of fingers)
+    fingers are up.
   """
   false_count = 0
   names = raised_fingers(landmarks, handedness_label)
-  if ("thumb" in fingers and "thumb" not in names) or ("thumb" not in fingers and "thumb" in names):
+  if ("thumb" in fingers and "thumb" not in names):
     false_count += 1
-  if ("index" in fingers and "index" not in names) or ("index" not in fingers and "index" in names):
+  if ("index" in fingers and "index" not in names):
     false_count += 1
-  if ("middle" in fingers and "middle" not in names) or ("middle" not in fingers and "middle" in names):
+  if ("middle" in fingers and "middle" not in names):
     false_count += 1
-  if ("ring" in fingers and "ring" not in names) or ("ring" not in fingers and "ring" in names):
+  if ("ring" in fingers and "ring" not in names):
     false_count += 1
-  if ("pinky" in fingers and "pinky" not in names) or ("pinky" not in fingers and "pinky" in names):
+  if ("pinky" in fingers and "pinky" not in names):
     false_count += 1
   
+  return false_count
+
+def fingers_down(fingers: str, landmarks, handedness_label: str = "Right") -> int:
+  """Return the count of fingers that are not down within the given list of fingers"""
+  false_count = 0
+  names = raised_fingers(landmarks, handedness_label)
+  if ("thumb" in fingers and "thumb" in names):
+    false_count += 1
+  if ("index" in fingers and "index" in names):
+    false_count += 1
+  if ("middle" in fingers and "middle" in names):
+    false_count += 1
+  if ("ring" in fingers and "ring" in names):
+    false_count += 1
+  if ("pinky" in fingers and "pinky" in names):
+    false_count += 1
   return false_count
 
 def finger_direction(landmarks, handedness_label: str) -> str:
@@ -688,6 +703,36 @@ def format_fingers(names: list[str]) -> str:
     return ", ".join(names)
 
 
+def perform_action(name: str) -> None:
+  """Print the action and send it to the focused window."""
+  print(f"action: {name}", flush=True)
+  if pyautogui is None:
+    return
+  try:
+    if name == "zoom in":
+      pyautogui.hotkey("command", "=")
+    elif name == "zoom out":
+      pyautogui.hotkey("command", "-")
+    elif name == "slide left":
+      pyautogui.press("left")
+    elif name == "slide right":
+      pyautogui.press("right")
+    elif name == "slide up":
+      pyautogui.press("up")
+    elif name == "slide down":
+      pyautogui.press("down")
+    elif name == "scroll up":
+      pyautogui.scroll(40)
+    elif name == "scroll down":
+      pyautogui.scroll(-40)
+    elif name == "click":
+      pyautogui.click()
+    elif name == "double click":
+      pyautogui.doubleClick()
+  except Exception as exc:
+    print(f"could not perform {name}: {exc}", flush=True)
+
+
 def main() -> int:
     hands_solution = mp.solutions.hands
     drawer = mp.solutions.drawing_utils
@@ -734,13 +779,13 @@ def main() -> int:
     last_click_at = -10.0
 
     last_action_name = ""
-
+    last_action_at = 0.0
     prev_touching = None
-    # prev_direction = None
+    prev_pinch = None
 
-    
     print("Camera on. Fist then open hand to start controlling. Open hand then fist to stop.")
     print("Press Q : quit. Press K : print landmark xyz. Press C with an open hand to calibrate.")
+    print(f"python: {sys.executable}", flush=True)
     if pyautogui is None:
       print(
         f"pyautogui unavailable ({_pyautogui_error}). "
@@ -749,7 +794,11 @@ def main() -> int:
         flush=True,
       )
     else:
-      print("Mouse/keyboard control ready.\n", flush=True)
+      print(
+        "Mouse/keyboard control ready. Click the app you want to control "
+        "(Safari, Notes, …) so it is in front of the camera window.\n",
+        flush=True,
+      )
 
     with hands_solution.Hands(
       static_image_mode=False,
@@ -786,94 +835,55 @@ def main() -> int:
             current_lm = lm
             handedness_label = result.multi_handedness[0].classification[0].label
             names = raised_fingers(hand_landmarks, handedness_label)
-            message = format_fingers(names)
+            message = ""
             gesture = hand_gesture(hand_landmarks, handedness_label)
-            if (prev_gesture == ""):
-              prev_gesture = gesture
-              prev_gesture_time = time.time()
-            else:
-              if (prev_gesture != gesture) and (gesture != "unknown"):
-                print(f"prev_gesture: {prev_gesture}, gesture: {gesture}", flush=True)
-                print("time : ", time.time(), "prev_gesture_time : ", prev_gesture_time, flush=True)
-
-                # Start recording/tracking the hand gestures
-                if recording == False and (time.time() - prev_gesture_time > 0.5) and prev_gesture == "fist" and gesture == "hi":
-                  prev_fist_to_hi = time.time()
-                  if fist_open_count == 0:
-                    open_fist_count += 1
-                    print("open_fist = 1\n", flush=True)
-                  if (time.time() - prev_fist_to_hi < 1):
-                    print("Start recording now:\n", flush=True)
-                    recording = True
-                    open_fist_count = 0
-                    last_action_name = "start recording"
-                
-                # Stop recording/tracking the hand gestures
-                if recording == True and (time.time() - prev_gesture_time > 0.5) and prev_gesture == "hi" and gesture == "fist":
-                  prev_hi_to_fist = time.time()                
-                  if open_fist_count == 0:
-                    open_fist_count += 1
-                  if (time.time() - prev_hi_to_fist < 1):
-                    print("Stop recording now:\n", flush=True)
-                    recording = False
-                    fist_open_count = 0
-                    last_action_name = "stop recording"
-                
-                if recording and pyautogui is not None:
-                  try:
-                    if gesture == "zoom":
-                      if "thumb and index" not in touching and "thumb and index" in prev_touching:
-                        # zoom in
-                        pyautogui.hotkey("command", "=")
-                        last_action_name = "zoom in"
-                      elif "thumb and index" in touching and "thumb and index" not in prev_touching:
-                        # zoom out
-                        pyautogui.hotkey("command", "-")
-                        last_action_name = "zoom out"
-                    elif gesture == "slide":
-                      if "index left" in direction:
-                        pyautogui.press("left")
-                        last_action_name = "slide left"
-                      elif "index right" in direction:
-                        pyautogui.press("right")
-                        last_action_name = "slide right"
-                        pyautogui.press("right")
-                      elif "index up" in direction:
-                        pyautogui.press("up")
-                        last_action_name = "slide up"
-                      elif "index down" in direction:
-                        pyautogui.press("down")
-                        last_action_name = "slide down"
-                    elif gesture == "scroll":
-                      if "index up" in direction:
-                        # scroll up
-                        pyautogui.scroll(40)
-                        last_action_name = "scroll up"
-                      elif "index down" in direction:
-                        # scroll down
-                        pyautogui.scroll(-40)
-                        last_action_name = "scroll down"
-                    elif gesture == "click":
-                      now_click = time.time()
-                      # Click fires when you enter the pointing pose. Enter it again
-                      # within 0.6s (after a fist or other pose) for a double click.
-                      if now_click - last_click_at < 0.6:
-                        # double click
-                        pyautogui.doubleClick()
-                        last_action_name = "double click"
-                      else:
-                        pyautogui.click()
-                        last_action_name = "click"
-                      last_click_at = now_click
-                  except Exception as exc:
-                    print(f"could not perform {last_action_name or gesture}: {exc}", flush=True)
-
-                prev_gesture = gesture
-                prev_gesture_time = time.time()
-
             direction = finger_direction(hand_landmarks, handedness_label)
             touching = finger_touching(hand_landmarks, handedness_label)
-            prev_touching = touching
+
+            if (prev_gesture == "" and gesture != "unknown"):
+              prev_gesture = gesture
+              prev_gesture_time = time.time()
+            elif (prev_gesture != gesture) and (gesture != "unknown"):
+              print(f"prev_gesture: {prev_gesture}, gesture: {gesture}", flush=True)
+              print("time : ", time.time(), "prev_gesture_time : ", prev_gesture_time, flush=True)
+
+              # Start recording/tracking the hand gestures
+              if recording == False and (time.time() - prev_gesture_time > 0.5) and prev_gesture == "fist" and gesture == "hi":
+                prev_fist_to_hi = time.time()
+                if fist_open_count == 0:
+                  open_fist_count += 1
+                  print("open_fist = 1\n", flush=True)
+                if (time.time() - prev_fist_to_hi < 1):
+                  print("Start recording now:\n", flush=True)
+                  recording = True
+                  open_fist_count = 0
+                  last_action_name = "start recording"
+
+              # Stop recording/tracking the hand gestures
+              if recording == True and (time.time() - prev_gesture_time > 0.5) and prev_gesture == "hi" and gesture == "fist":
+                prev_hi_to_fist = time.time()
+                if open_fist_count == 0:
+                  open_fist_count += 1
+                if (time.time() - prev_hi_to_fist < 1):
+                  print("Stop recording now:\n", flush=True)
+                  recording = False
+                  fist_open_count = 0
+                  last_action_name = "stop recording"
+
+              # Click is a pose change (point with index). Enter it again
+              # within 0.6s after leaving it for a double click.
+              if recording and gesture == "click":
+                now_click = time.time()
+                if now_click - last_click_at < 0.6:
+                  perform_action("double click")
+                  last_action_name = "double click"
+                else:
+                  perform_action("click")
+                  last_action_name = "click"
+                last_click_at = now_click
+
+              prev_gesture = gesture
+              prev_gesture_time = time.time()
 
             drawer.draw_landmarks(
               frame,
@@ -914,31 +924,91 @@ def main() -> int:
             #   gesture = "nahhh"
             
             if prev_index_tip is not None and _dist(index_tip, prev_index_tip) > 0.05 and prev_index_tip[0] > index_tip[0]:
-              print("index tip moved left", flush=True)
+              # print("index tip moved left", flush=True)
               now = time.time()
               movement_until = now + movement_hold_s
               if now < movement_until and "index" in names:
                 movement_x = "index tip left"
             
             if prev_index_tip is not None and _dist(index_tip, prev_index_tip) > 0.05 and prev_index_tip[0] < index_tip[0]:
-              print("index tip moved right", flush=True)
+              # print("index tip moved right", flush=True)
               now = time.time()
               movement_until = now + movement_hold_s
               if now < movement_until and "index" in names:
                 movement_x = "index tip right"
             
             if prev_index_tip is not None and _dist(index_tip, prev_index_tip) > 0.05 and prev_index_tip[1] > index_tip[1]:
-              print("index tip moved up", flush=True)
+              # print("index tip moved up", flush=True)
               now = time.time()
               movement_until = now + movement_hold_s
               if now < movement_until and "index" in names:
                 movement_y = "index tip up"
             if prev_index_tip is not None and _dist(index_tip, prev_index_tip) > 0.05 and prev_index_tip[1] < index_tip[1]:
-              print("index tip moved down", flush=True)
+              # print("index tip moved down", flush=True)
               now = time.time()
               movement_until = now + movement_hold_s
               if now < movement_until and "index" in names:
                 movement_y = "index tip down"
+
+            # Zoom / slide / scroll need this frame's pinch and motion, so they
+            # run while you HOLD the pose — not only on the frame it appears.
+            palm_width = _dist(index_mcp, pinky_mcp) or 1e-6
+            pinch = _dist(thumb_tip, index_tip) / palm_width
+            if recording:
+              now_act = time.time()
+              mode = gesture if gesture not in (None, "unknown") else prev_gesture
+              if mode == "zoom" and now_act - last_action_at > 0.35:
+                was_pinched = (
+                  prev_touching is not None
+                  and "thumb and index" in prev_touching
+                )
+                is_pinched = touching is not None and "thumb and index" in touching
+                if is_pinched and not was_pinched:
+                  perform_action("zoom in")
+                  last_action_name = "zoom in"
+                  last_action_at = now_act
+                elif was_pinched and not is_pinched:
+                  perform_action("zoom out")
+                  last_action_name = "zoom out"
+                  last_action_at = now_act
+                elif prev_pinch is not None:
+                  if prev_pinch > 0.45 and pinch <= 0.35:
+                    perform_action("zoom in")
+                    last_action_name = "zoom in"
+                    last_action_at = now_act
+                  elif prev_pinch < 0.55 and pinch >= 0.75:
+                    perform_action("zoom out")
+                    last_action_name = "zoom out"
+                    last_action_at = now_act
+              if mode == "slide" and now_act - last_action_at > 0.4:
+                if movement_x == "index tip left":
+                  perform_action("slide left")
+                  last_action_name = "slide left"
+                  last_action_at = now_act
+                elif movement_x == "index tip right":
+                  perform_action("slide right")
+                  last_action_name = "slide right"
+                  last_action_at = now_act
+                elif movement_y == "index tip up":
+                  perform_action("slide up")
+                  last_action_name = "slide up"
+                  last_action_at = now_act
+                elif movement_y == "index tip down":
+                  perform_action("slide down")
+                  last_action_name = "slide down"
+                  last_action_at = now_act
+              if mode == "scroll" and now_act - last_action_at > 0.15:
+                if movement_y == "index tip up":
+                  perform_action("scroll up")
+                  last_action_name = "scroll up"
+                  last_action_at = now_act
+                elif movement_y == "index tip down":
+                  perform_action("scroll down")
+                  last_action_name = "scroll down"
+                  last_action_at = now_act
+
+            prev_touching = touching
+            prev_pinch = pinch
 
             # Always save this frame so the next frame has a previous point.
             prev_wrist = wrist
