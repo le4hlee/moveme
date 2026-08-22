@@ -3,4 +3,13 @@ source venv/bin/activate
 python detect_fingers.py
 
 python move_me.py
+  hi = all fingers up
+  to start recording do : fist -> hi -> fist -> hi
+  to stop recording do : hi -> fist -> hi -> fist
+  scroll : index and middle fingers up
+  zoom : thumb and index fingers up
+  slide : thumb, index and middle fingers up
+  click : only index finger up
+
 pythone sign_me.py
+  refer to ASL alphabet chart
